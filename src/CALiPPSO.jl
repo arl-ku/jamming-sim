@@ -1024,8 +1024,9 @@ function produce_jammed_configuration!(Xs::Vector{SVector{d, PeriodicNumber{T}}}
     ℓ0::T=4*R, sqrΓ0::Real=1.01, thresholds_bounds::Tuple{T, T}=(5e-4, 1e-5), sbound::T=0.01,
     optimizer::MOI.AbstractOptimizer=default_optimizer, solver_attributes::Dict=default_solver_attributes, add_bridges::Bool=false,
     max_iters::I=default_max_iterations, tol_Γ_convergence::T=default_tol_Γ_convergence, tol_S_convergence::T=default_tol_displacements_convergence, tol_mechanical_equilibrium::Float64=default_tol_force_equilibrium, zero_force::T=default_tol_zero_forces,
-    tol_overlap::T=default_tol_overlap, non_iso_break::I=2*max_iters, 
+    tol_overlap::T=default_tol_overlap, non_iso_break::I=2*max_iters,
     ratio_sℓ_update::T=0.1,
+    traj_sink=nothing,
     verbose::Bool=true, non_iso_warn::Bool=false, monitor_step::I=10, initial_monitor::I=monitor_step, interval_overlaps_check::I=10, initial_overlaps_check::I=initial_monitor) where {d, T<:Float64, I<:Int}
 
     N = length(Xs)
@@ -1042,6 +1043,11 @@ function produce_jammed_configuration!(Xs::Vector{SVector{d, PeriodicNumber{T}}}
     Nnr_iter = 0; 
     S⃗_cum = svectors(zeros(d, N-1), Val(d))
     distances = distances_between_centers(Xs)
+
+    # Optional trajectory recording: push (R, d×N matrix of raw coords) per frame. No-op if traj_sink===nothing.
+    record_frame!(sink, Rval) = (sink === nothing) ? nothing : push!(sink, (Rval, [Xs[i][k].value for k in 1:d, i in 1:N]))
+    record_frame!(traj_sink, R) # initial (loose) configuration
+
     #Arrays to store the output
     constraints = Vector{Vector{ConstraintRef}}(undef, N-1); possible_neighs = Vector{Vector{Int64}}(undef, N-1)
     Γs_vs_t = zeros(max_iters+1); smax_vs_t = L*ones(max_iters+1); iso_vs_t = falses(max_iters+1); solve_ts = similar(Γs_vs_t); # +1 because it could be that an additional LP step might be needed after main loop to guarantee force balance
@@ -1100,11 +1106,13 @@ function produce_jammed_configuration!(Xs::Vector{SVector{d, PeriodicNumber{T}}}
 
         # update particles' position with optimal displacements
         for i in 1:N-1 #Since S⃗[:, N] = 0
-            # Xs[i] += SVector{d}(S⃗[:, i]) 
+            # Xs[i] += SVector{d}(S⃗[:, i])
             # It seems  that converting each column of S⃗ to an SVector takes more allocations than simply summing the elements without conversion
             Xs[i] += S⃗[:, i]
             S⃗_cum[i] += S⃗[:, i] # To monitor the total displacement of each particle
         end
+
+        record_frame!(traj_sink, R) # record configuration after this iteration's inflation + displacement
 
         Γs_vs_t[iter] = sqrΓ; solve_ts[iter] = t_solve # store the optimal √Γ and solving time
         

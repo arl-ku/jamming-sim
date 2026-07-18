@@ -1,0 +1,328 @@
+<title>Jammed Sphere Packing — N=512, phi=0.6305</title>
+<style>
+  :root{
+    --bg:#0b0e14; --bg2:#0f141d; --panel:#141b26; --panel2:#1b2431;
+    --line:#26303f; --ink:#dfe6ef; --muted:#8a97a8; --faint:#5c6675;
+    --accent:#e0a458; --accent-dim:#a87a3f;
+    --box:#3b4757; --grid:#1a2330;
+    --shadow:0 1px 0 rgba(255,255,255,.03), 0 8px 30px rgba(0,0,0,.45);
+    --mono:ui-monospace,"SFMono-Regular","Cascadia Code",Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#eef1f5; --bg2:#e6eaf0; --panel:#ffffff; --panel2:#f3f6fa;
+      --line:#d5dce5; --ink:#1a2230; --muted:#5a6675; --faint:#8a95a4;
+      --accent:#b9762a; --accent-dim:#caa06a; --box:#9aa7b8; --grid:#dde3ec;
+      --shadow:0 1px 0 rgba(255,255,255,.6), 0 10px 30px rgba(30,45,70,.10);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0b0e14; --bg2:#0f141d; --panel:#141b26; --panel2:#1b2431;
+    --line:#26303f; --ink:#dfe6ef; --muted:#8a97a8; --faint:#5c6675;
+    --accent:#e0a458; --accent-dim:#a87a3f; --box:#3b4757; --grid:#1a2330;
+    --shadow:0 1px 0 rgba(255,255,255,.03), 0 8px 30px rgba(0,0,0,.45);
+  }
+  :root[data-theme="light"]{
+    --bg:#eef1f5; --bg2:#e6eaf0; --panel:#ffffff; --panel2:#f3f6fa;
+    --line:#d5dce5; --ink:#1a2230; --muted:#5a6675; --faint:#8a95a4;
+    --accent:#b9762a; --accent-dim:#caa06a; --box:#9aa7b8; --grid:#dde3ec;
+    --shadow:0 1px 0 rgba(255,255,255,.6), 0 10px 30px rgba(30,45,70,.10);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(120% 120% at 70% 10%,var(--bg2),var(--bg));
+    color:var(--ink);font-family:var(--sans);min-height:100vh}
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 20px 40px;display:flex;flex-direction:column;gap:16px}
+
+  header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px}
+  .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--accent);margin:0 0 6px}
+  h1{font-size:clamp(20px,3.4vw,29px);line-height:1.08;margin:0;font-weight:650;letter-spacing:-.01em;text-wrap:balance}
+  h1 .var{font-family:var(--mono);color:var(--muted);font-weight:500}
+  .sub{color:var(--muted);font-size:13.5px;margin:8px 0 0;max-width:60ch;line-height:1.5}
+
+  .metricbar{display:flex;flex-wrap:wrap;gap:1px;background:var(--line);border:1px solid var(--line);
+    border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
+  .metric{background:var(--panel);padding:10px 15px;flex:1 1 auto;min-width:96px}
+  .metric .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+  .metric .v{font-family:var(--mono);font-size:18px;font-variant-numeric:tabular-nums;margin-top:3px;font-weight:600}
+  .metric .v.good{color:var(--accent)}
+  .metric .v small{font-size:11px;color:var(--muted);font-weight:400}
+
+  .stage{display:grid;grid-template-columns:1fr 250px;gap:14px}
+  @media (max-width:760px){.stage{grid-template-columns:1fr}}
+
+  .canvaswrap{position:relative;background:
+      linear-gradient(180deg,var(--panel2),var(--panel));
+    border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);
+    aspect-ratio:1/1;min-height:340px;touch-action:none;cursor:grab}
+  .canvaswrap.drag{cursor:grabbing}
+  canvas{display:block;width:100%;height:100%}
+  .hint{position:absolute;left:12px;bottom:10px;font-family:var(--mono);font-size:10.5px;color:var(--faint);
+    letter-spacing:.03em;pointer-events:none;user-select:none}
+  .fps{position:absolute;right:12px;top:10px;font-family:var(--mono);font-size:10px;color:var(--faint)}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
+    padding:14px;display:flex;flex-direction:column;gap:16px;align-self:start}
+  .grouplabel{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--faint);margin:0 0 8px}
+
+  .seg{display:flex;flex-direction:column;gap:6px}
+  .segbtns{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:3px;gap:3px}
+  .segbtns button{flex:1;font-family:var(--mono);font-size:11px;letter-spacing:.02em;color:var(--muted);
+    background:transparent;border:0;border-radius:6px;padding:7px 4px;cursor:pointer;transition:.15s}
+  .segbtns button:hover{color:var(--ink)}
+  .segbtns button[aria-pressed="true"]{background:var(--accent);color:#1a1204;font-weight:600}
+  :root[data-theme="light"] .segbtns button[aria-pressed="true"]{color:#fff}
+  @media (prefers-color-scheme:light){.segbtns button[aria-pressed="true"]{color:#fff}}
+
+  .toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;
+    font-size:13px;color:var(--ink);user-select:none}
+  .toggle .sw{width:36px;height:20px;border-radius:20px;background:var(--panel2);border:1px solid var(--line);
+    position:relative;flex:none;transition:.18s}
+  .toggle .sw::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
+    background:var(--faint);transition:.18s}
+  .toggle input{position:absolute;opacity:0;width:0;height:0}
+  .toggle input:checked + .sw{background:var(--accent);border-color:var(--accent)}
+  .toggle input:checked + .sw::after{left:18px;background:#1a1204}
+  .toggle input:focus-visible + .sw{outline:2px solid var(--accent);outline-offset:2px}
+
+  .resetbtn{font-family:var(--mono);font-size:11.5px;color:var(--muted);background:var(--panel2);
+    border:1px solid var(--line);border-radius:9px;padding:9px;cursor:pointer;transition:.15s;letter-spacing:.03em}
+  .resetbtn:hover{color:var(--ink);border-color:var(--accent-dim)}
+
+  .legend{display:flex;flex-direction:column;gap:8px}
+  .legend .bar{height:12px;border-radius:6px;border:1px solid var(--line)}
+  .legend .ends{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+  .legend .note{font-size:11.5px;color:var(--muted);line-height:1.45}
+  .legend .rat{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--muted)}
+  .legend .rat .dot{width:11px;height:11px;border-radius:50%;background:rgba(140,150,165,.5);
+    border:1px solid var(--faint);flex:none}
+
+  footer{color:var(--faint);font-size:11.5px;font-family:var(--mono);line-height:1.6;
+    border-top:1px solid var(--line);padding-top:14px}
+  footer b{color:var(--muted);font-weight:600}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <p class="eyebrow">CALiPPSO &middot; Linear-programming jamming</p>
+      <h1>Jammed hard-sphere packing <span class="var">d=3, N=512</span></h1>
+      <p class="sub">A monodisperse packing driven from a random gas (&phi;=0.30) to the jamming point by
+        iterated linear programming. Each sphere is shaded and depth-sorted; drag to rotate the periodic unit cell.</p>
+    </div>
+  </header>
+
+  <div class="metricbar" id="metricbar"></div>
+
+  <div class="stage">
+    <div class="canvaswrap" id="stage">
+      <canvas id="cv"></canvas>
+      <div class="fps" id="fps"></div>
+      <div class="hint">drag &middot; rotate  &nbsp;|&nbsp;  scroll &middot; zoom</div>
+    </div>
+
+    <aside class="panel">
+      <div class="seg">
+        <p class="grouplabel">Colour by</p>
+        <div class="segbtns" id="colormode" role="group" aria-label="Colour mode">
+          <button data-v="coord" aria-pressed="true">contacts&nbsp;z</button>
+          <button data-v="depth" aria-pressed="false">depth</button>
+          <button data-v="mono" aria-pressed="false">plain</button>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:11px">
+        <label class="toggle"><span>Auto-rotate</span>
+          <input type="checkbox" id="spin" checked><span class="sw"></span></label>
+        <label class="toggle"><span>Unit cell</span>
+          <input type="checkbox" id="box" checked><span class="sw"></span></label>
+        <label class="toggle"><span>Fade rattlers</span>
+          <input type="checkbox" id="fade" checked><span class="sw"></span></label>
+      </div>
+
+      <button class="resetbtn" id="reset">&#8635; reset view</button>
+
+      <div class="legend" id="legend">
+        <p class="grouplabel" style="margin:0">Contacts per sphere</p>
+        <div class="bar" id="legbar"></div>
+        <div class="ends"><span id="legmin">z=4</span><span>z=2d=6</span><span id="legmax">z=10</span></div>
+        <div class="rat"><span class="dot"></span> rattlers (z=0), unconstrained</div>
+        <div class="note">Isostaticity means each non-rattler carries just enough contacts to be rigid — mean z&nbsp;&rarr;&nbsp;2d.</div>
+      </div>
+    </aside>
+  </div>
+
+  <footer id="foot"></footer>
+</div>
+
+<script>
+const DATA = [0.5016,0.5402,0.8735,4,0.1531,0.5356,0.4085,6,0.0684,0.9435,0.5209,6,0.2648,0.4878,0.8039,6,0.0042,0.4556,0.3483,8,0.0759,0.7254,0.5976,7,0.6265,0.3322,0.2421,7,0.9819,0.9121,0.2171,6,0.3748,0.1811,0.1643,0,0.3228,0.534,0.6932,4,0.2153,0.0865,0.5822,5,0.3423,0.103,0.2799,5,0.4301,0.0051,0.0233,8,0.9185,0.4103,0.7454,7,0.3984,0.8872,0.1858,6,0.9148,0.8932,0.7037,7,0.0708,0.6152,0.8019,4,0.2043,0.9046,0.291,5,0.6372,0.9275,0.6616,6,0.6633,0.924,0.3719,8,0.3992,0.2112,0.5785,4,0.5273,0.4268,0.8089,8,0.5071,0.8556,0.4679,6,0.7717,0.0988,0.922,7,0.7618,0.8196,0.821,5,0.5785,0.5009,0.0225,6,0.6105,0.6855,0.9514,6,0.2057,0.1187,0.0322,8,0.0249,0.6328,0.6783,5,0.2865,0.6353,0.3637,6,0.1349,0.1165,0.1448,8,0.6815,0.9132,0.0387,7,0.8695,0.6317,0.0113,5,0.6423,0.152,0.6082,7,0.9352,0.2709,0.9476,4,0.6681,0.6169,0.2565,6,0.2436,0.835,0.6509,4,0.7247,0.0376,0.4036,9,0.9876,0.0662,0.0669,6,0.9049,0.6668,0.6324,5,0.7706,0.7229,0.0401,7,0.5664,0.9794,0.0315,8,0.4527,0.0805,0.2092,7,0.0297,0.5959,0.1206,7,0.9908,0.8003,0.9396,7,0.4597,0.6637,0.5511,5,0.6854,0.4512,0.4585,6,0.7569,0.8436,0.9541,5,0.7716,0.1815,0.6182,5,0.1439,0.9642,0.4134,7,0.1116,0.0944,0.2738,7,0.8944,0.1463,0.2503,7,0.3912,0.0067,0.8633,6,0.5462,0.8535,0.069,4,0.9619,0.7267,0.8327,7,0.9016,0.2062,0.6018,6,0.6837,0.1798,0.9802,7,0.0138,0.8426,0.5881,5,0.515,0.4943,0.3645,6,0.179,0.2624,0.6983,5,0.814,0.7442,0.3694,6,0.6983,0.0912,0.1728,7,0.0293,0.5326,0.591,9,0.0469,0.3166,0.7135,5,0.4753,0.1976,0.861,7,0.4366,0.8757,0.6833,4,0.7976,0.2312,0.9345,5,0.4352,0.3359,0.3553,5,0.1079,0.2218,0.8031,7,0.9616,0.5791,0.3235,7,0.4916,0.1047,0.6705,6,0.8913,0.7978,0.6141,6,0.1404,0.249,0.1541,5,0.7878,0.7254,0.6556,5,0.122,0.7287,0.1785,0,0.5312,0.3956,0.4521,5,0.7658,0.0987,0.5144,7,0.6671,0.7479,0.7612,7,0.7688,0.1874,0.2357,7,0.9529,0.0209,0.5182,4,0.961,0.709,0.1336,7,0.9419,0.3345,0.5896,6,0.9704,0.545,0.013,7,0.7868,0.3805,0.0838,8,0.4844,0.0778,0.8005,5,0.954,0.6159,0.5198,6,0.6937,0.6976,0.1456,4,0.7384,0.3397,0.8852,5,0.5464,0.3122,0.7441,6,0.5912,0.5083,0.2562,9,0.3545,0.0624,0.4081,4,0.8463,0.5136,0.7879,5,0.9883,0.0863,0.3228,4,0.4794,0.2517,0.0595,7,0.1449,0.146,0.9171,5,0.7336,0.5675,0.8333,5,0.0928,0.0904,0.4054,6,0.8231,0.1186,0.1357,7,0.8788,0.8608,0.3716,8,0.6753,0.6238,0.4705,7,0.56,0.7135,0.0953,4,0.7639,0.8363,0.1093,4,0.6947,0.3394,0.5354,5,0.5923,0.9964,0.8177,6,0.4657,0.9826,0.4613,4,0.4565,0.5527,0.0993,8,0.8502,0.9287,0.2084,6,0.1379,0.6522,0.0678,6,0.4328,0.6811,0.0737,7,0.8089,0.5939,0.6887,7,0.7157,0.9556,0.8504,4,0.277,0.3616,0.6497,8,0.0544,0.3326,0.3435,6,0.462,0.5238,0.229,6,0.2066,0.7258,0.5731,6,0.8542,0.4837,0.0337,6,0.5281,0.7452,0.3425,6,0.1517,0.7218,0.452,5,0.4676,0.9114,0.8105,4,0.3636,0.7832,0.6192,0,0.3762,0.7073,0.9563,5,0.787,0.947,0.3288,7,0.6602,0.7476,0.6254,5,0.3898,0.8849,0.4125,6,0.6569,0.543,0.3665,6,0.8509,0.3842,0.224,6,0.2668,0.7102,0.6906,7,0.1437,0.5979,0.1891,6,0.9874,0.7431,0.4999,5,0.0543,0.4001,0.562,6,0.8927,0.269,0.4849,5,0.5463,0.7736,0.8104,7,0.9016,0.5055,0.4166,7,0.1593,0.8015,0.9065,6,0.1129,0.1497,0.639,6,0.7893,0.1748,0.8143,8,0.574,0.5398,0.7565,6,0.2603,0.2415,0.5951,5,0.0754,0.7898,0.8039,6,0.2045,0.9021,0.9994,4,0.327,0.9382,0.6413,7,0.1747,0.563,0.8665,8,0.352,0.402,0.7518,7,0.0654,0.252,0.9284,7,0.3295,0.9491,0.2849,4,0.3368,0.808,0.7475,4,0.3997,0.7185,0.3644,5,0.3099,0.9938,0.9677,8,0.8971,0.7611,0.0255,6,0.8499,0.5502,0.5699,7,0.1907,0.3246,0.0569,6,0.2066,0.964,0.5307,5,0.523,0.3289,0.1587,7,0.842,0.369,0.9633,4,0.8825,0.9258,0.5789,6,0.771,0.2927,0.4369,4,0.0954,0.3729,0.136,7,0.4388,0.0009,0.6062,9,0.127,0.9999,0.6311,6,0.7608,0.1655,0.3995,7,0.7766,0.9743,0.9686,7,0.8951,0.681,0.2698,4,0.3502,0.1217,0.8106,6,0.9792,0.996,0.831,4,0.6527,0.7836,0.0306,6,0.3245,0.4954,0.2156,5,0.5915,0.3281,0.8707,6,0.2351,0.2331,0.9711,6,0.5763,0.3399,0.0349,5,0.1393,0.9031,0.1319,5,0.9541,0.8593,0.8262,6,0.8571,0.8878,0.0296,7,0.8528,0.053,0.604,4,0.2199,0.5992,0.7467,7,0.1533,0.2068,0.3838,7,0.4632,0.7729,0.165,5,0.5802,0.531,0.4745,5,0.7307,0.741,0.2657,5,0.4539,0.3882,0.0541,5,0.4085,0.7686,0.4873,6,0.2406,0.4386,0.4333,5,0.5658,0.3039,0.542,7,0.8508,0.2688,0.0504,7,0.4288,0.806,0.0283,7,0.0304,0.6506,0.412,5,0.4215,0.2856,0.2329,8,0.9184,0.4987,0.2268,7,0.3836,0.6508,0.6615,4,0.1817,0.0213,0.945,9,0.6504,0.6962,0.3618,5,0.6601,0.4004,0.1187,4,0.1,0.4146,0.438,7,0.1184,0.0059,0.8291,9,0.3713,0.5562,0.5689,5,0.3281,0.5381,0.4444,6,0.0878,0.5846,0.9648,8,0.5632,0.8182,0.6862,4,0.269,0.4148,0.3056,5,0.5066,0.2553,0.4333,7,0.0967,0.843,0.2427,5,0.2432,0.2619,0.4648,9,0.8217,0.6723,0.5254,5,0.4792,0.482,0.5459,6,0.9976,0.6752,0.0103,5,0.0078,0.1907,0.5219,0,0.7861,0.2714,0.7152,5,0.4611,0.1216,0.0797,6,0.6286,0.5367,0.6353,7,0.8738,0.7736,0.7448,5,0.6252,0.8225,0.2947,6,0.5217,0.9751,0.707,6,0.5107,0.0237,0.9191,8,0.9778,0.7819,0.2436,6,0.3023,0.9341,0.772,7,0.3434,0.5924,0.031,4,0.2648,0.1068,0.172,5,0.3428,0.0919,0.6198,5,0.6873,0.1834,0.7294,7,0.0409,0.1134,0.841,8,0.822,0.4114,0.4783,0,0.1007,0.6198,0.5206,7,0.8646,0.7881,0.8993,6,0.0368,0.4748,0.9099,5,0.3588,0.737,0.2393,6,0.6532,0.0277,0.9431,4,0.8305,0.7147,0.1586,4,0.2766,0.9547,0.4131,4,0.8302,0.0383,0.819,6,0.2805,0.1687,0.3776,7,0.5954,0.0383,0.3724,4,0.6246,0.4157,0.3456,6,0.5341,0.9041,0.347,6,0.8985,0.5021,0.9097,5,0.6839,0.2124,0.4973,6,0.352,0.6784,0.7877,6,0.8453,0.6218,0.8809,5,0.4433,0.9999,0.3314,6,0.0465,0.0479,0.7254,7,0.94,0.3811,0.8734,7,0.8869,0.198,0.3726,8,0.2007,0.8439,0.41,4,0.957,0.8864,0.4761,8,0.7559,0.3991,0.3585,6,0.6379,0.8176,0.1584,6,0.4205,0.1162,0.9508,5,0.7766,0.8462,0.5673,6,0.334,0.791,0.1203,7,0.7681,0.4686,0.9152,0,0.3752,0.2499,0.4532,6,0.3047,0.8261,0.3289,5,0.3984,0.3102,0.6674,6,0.8516,0.0701,0.3808,5,0.7448,0.5943,0.9636,4,0.2044,0.7976,0.0838,5,0.1289,0.6294,0.3174,6,0.2324,0.4484,0.0322,7,0.1363,0.6968,0.7126,6,0.1753,0.3079,0.8788,7,0.3455,0.912,0.0663,5,0.4022,0.428,0.4518,6,0.0134,0.1446,0.1909,5,0.349,0.2332,0.883,7,0.0742,0.8298,0.4486,6,0.0942,0.2744,0.5967,5,0.3122,0.2756,0.7625,6,0.7214,0.4871,0.0387,6,0.7272,0.0718,0.0444,6,0.5677,0.6858,0.6983,8,0.3589,0.6139,0.1657,5,0.9831,0.5153,0.7952,5,0.0727,0.8982,0.0169,7,0.2516,0.5486,0.1178,5,0.1747,0.9313,0.7345,6,0.1824,0.0068,0.2031,5,0.5408,0.4597,0.1432,5,0.6765,0.3247,0.7685,8,0.5385,0.77,0.5646,0,0.6426,0.6121,0.0575,6,0.9772,0.3644,0.447,6,0.8639,0.0181,0.0588,4,0.1436,0.4947,0.5347,7,0.8609,0.1424,0.0105,6,0.6144,0.0704,0.7095,6,0.5689,0.0788,0.1446,4,0.0729,0.0755,0.5361,6,0.9981,0.9674,0.6312,7,0.9162,0.9748,0.3143,7,0.1771,0.3451,0.2384,5,0.2894,0.1193,0.9288,6,0.4655,0.658,0.2319,7,0.8472,0.8043,0.2555,7,0.5632,0.5993,0.1634,6,0.2163,0.0695,0.4503,6,0.4697,0.6222,0.7619,7,0.9059,0.83,0.1389,6,0.5505,0.0015,0.2527,7,0.3377,0.8883,0.8917,7,0.5157,0.3998,0.2709,7,0.2468,0.0404,0.8306,7,0.6013,0.4309,0.5595,8,0.308,0.3639,0.5204,6,0.6138,0.4236,0.7055,6,0.7724,0.0835,0.7081,7,0.7899,0.3938,0.7752,7,0.0827,0.2854,0.4646,7,0.9239,0.3585,0.1159,6,0.5276,0.9032,0.5904,8,0.3682,0.3051,0.1126,5,0.0937,0.7669,0.0168,8,0.2897,0.2778,0.2165,7,0.3848,0.4364,0.6276,8,0.3344,0.0001,0.5239,8,0.6829,0.9907,0.2585,8,0.6939,0.0821,0.8155,7,0.0514,0.018,0.1765,6,0.6727,0.2239,0.8552,4,0.9446,0.2825,0.2876,5,0.7355,0.4827,0.5775,4,0.9153,0.1556,0.8523,6,0.681,0.1153,0.3049,6,0.4183,0.4078,0.1807,7,0.4345,0.8296,0.3001,6,0.77,0.6014,0.0941,6,0.2992,0.356,0.8721,4,0.3089,0.2949,0.347,6,0.035,0.4475,0.6931,5,0.9199,0.0378,0.1778,6,0.0271,0.3054,0.044,7,0.7965,0.6043,0.2244,7,0.5059,0.1985,0.1784,7,0.2172,0.3689,0.7682,7,0.8839,0.1545,0.723,7,0.3941,0.4581,0.3225,6,0.7463,0.3098,0.1889,7,0.4525,0.7487,0.7195,5,0.7291,0.3771,0.6582,10,0.6504,0.7965,0.8899,8,0.905,0.0472,0.9287,5,0.5319,0.2611,0.3029,4,0.0025,0.4658,0.1157,5,0.6182,0.9489,0.1501,6,0.1141,0.8242,0.6814,6,0.4847,0.1078,0.3971,5,0.725,0.4953,0.719,5,0.1495,0.1822,0.5153,4,0.254,0.6552,0.2363,6,0.4283,0.5045,0.9786,7,0.506,0.383,0.639,6,0.2193,0.7065,0.9775,5,0.2105,0.9177,0.8667,5,0.2692,0.3879,0.1447,5,0.9469,0.7466,0.3733,6,0.8645,0.7912,0.484,6,0.5574,0.1804,0.7578,7,0.0302,0.5259,0.4582,7,0.9842,0.2658,0.8241,8,0.5612,0.2313,0.9567,6,0.9666,0.9365,0.0873,5,0.2787,0.8518,0.5174,4,0.1723,0.4681,0.188,7,0.7254,0.9524,0.5057,7,0.4558,0.5741,0.4529,6,0.8913,0.1353,0.4897,4,0.8178,0.5078,0.3134,4,0.2875,0.7465,0.4367,5,0.6882,0.2468,0.3233,8,0.6351,0.2021,0.2099,5,0.1014,0.4087,0.0055,5,0.3047,0.4946,0.9306,5,0.7384,0.2137,0.0974,4,0.5156,0.2325,0.6422,4,0.8481,0.9598,0.455,5,0.6274,0.5581,0.9128,6,0.1605,0.109,0.7563,7,0.6451,0.856,0.5498,7,0.4207,0.7933,0.8496,6,0.703,0.3079,0.0104,5,0.1845,0.3354,0.3708,7,0.5506,0.1308,0.2839,8,0.0487,0.521,0.2414,5,0.3533,0.4703,0.0829,8,0.304,0.1516,0.5074,9,0.8003,0.0524,0.2488,5,0.0377,0.8174,0.1264,5,0.6339,0.8748,0.7837,5,0.4086,0.4315,0.8685,5,0.8536,0.2902,0.8292,4,0.7511,0.9757,0.1332,4,0.8127,0.3036,0.5854,6,0.5515,0.6156,0.324,6,0.2525,0.0327,0.698,7,0.7822,0.6847,0.7821,7,0.2883,0.6296,0.8937,6,0.9609,0.1958,0.08,6,0.0836,0.2244,0.2719,6,0.6403,0.2785,0.6492,5,0.8512,0.4223,0.6313,5,0.2064,0.8089,0.7759,5,0.5899,0.6476,0.5729,7,0.5188,0.4145,0.941,9,0.9171,0.6251,0.7595,4,0.5681,0.0299,0.5916,4,0.7539,0.715,0.9084,5,0.2325,0.0406,0.3215,4,0.9761,0.0984,0.6244,5,0.21,0.1835,0.2658,6,0.7807,0.5439,0.4565,5,0.1756,0.3559,0.5303,6,0.0127,0.9842,0.4053,6,0.0681,0.8958,0.884,5,0.5949,0.9579,0.4808,4,0.7157,0.4305,0.2356,6,0.1417,0.5328,0.6621,5,0.7337,0.8702,0.2343,8,0.4277,0.2006,0.7368,6,0.6513,0.4153,0.9515,7,0.0123,0.1882,0.7169,5,0.5305,0.8749,0.2173,6,0.719,0.6259,0.5961,6,0.7977,0.9536,0.7217,4,0.1515,0.8456,0.5556,7,0.6248,0.8092,0.427,6,0.2176,0.5743,0.9919,9,0.1462,0.3844,0.6568,6,0.9768,0.6087,0.8957,5,0.9156,0.0255,0.7179,6,0.0665,0.3698,0.8339,6,0.1869,0.4372,0.9077,5,0.2588,0.2193,0.1012,6,0.3536,0.009,0.1569,6,0.9592,0.9286,0.9547,6,0.2428,0.6044,0.6137,7,0.6763,0.5298,0.1563,6,0.043,0.9165,0.7456,6,0.5515,0.6663,0.447,5,0.3596,0.2158,0.0145,7,0.9619,0.4129,0.0006,8,0.6065,0.2189,0.0811,7,0.0077,0.8684,0.34,6,0.7619,0.6232,0.3514,5,0.2691,0.1646,0.7033,5,0.5279,0.7893,0.9411,6,0.3007,0.8105,0.993,9,0.0489,0.0258,0.9407,5,0.4452,0.3037,0.942,4,0.8682,0.2572,0.1817,6,0.241,0.0003,0.0813,6,0.0718,0.7014,0.9032,10,0.6357,0.0843,0.4908,5,0.9266,0.5228,0.675,6,0.4309,0.3121,0.81,5,0.7137,0.7467,0.5036,5,0.5016,0.5756,0.6415,5,0.628,0.3087,0.4245,7,0.6547,0.4607,0.8265,7,0.0261,0.6581,0.2381,4,0.377,0.5545,0.8291,7,0.2677,0.9089,0.1742,7,0.4823,0.6797,0.8811,6,0.5087,0.6097,0.9911,6,0.8135,0.289,0.309,6,0.132,0.4458,0.3127,7,0.7332,0.841,0.6929,5,0.5744,0.1106,0.011,6,0.6053,0.1738,0.3973,6,0.4443,0.4954,0.7308,7,0.4595,0.9033,0.943,7,0.4036,0.8884,0.5447,8,0.2064,0.7366,0.3317,8,0.5849,0.7161,0.2259,6,0.4129,0.2012,0.3353,4,0.2345,0.1913,0.83,5,0.425,0.0971,0.5154,8,0.0035,0.3965,0.2292,6,0.0861,0.9654,0.2937,6,0.436,0.3324,0.5379,6,0.5858,0.1259,0.8793,4,0.5988,0.6521,0.8232,8,0.0193,0.1994,0.3855,5,0.488,0.9734,0.1388,8,0.8961,0.593,0.1357,4,0.5378,0.1665,0.5273,4,0.333,0.3668,0.0003,0,0.3278,0.6794,0.5442,8,0.9982,0.7614,0.6994,4,0.074,0.7494,0.3344,5,0.0116,0.2763,0.1729,9,0.1281,0.5198,0.0737,7,0.6812,0.6211,0.7235,7,0.334,0.0916,0.0545,7,0.264,0.6798,0.0998,6,0.9921,0.1457,0.9604,5,0.8054,0.4898,0.1573,7,0.2245,0.5397,0.2951,5,0.1861,0.6919,0.8358,7,0.9185,0.2822,0.7096,8,0.1114,0.0186,0.0579,6,0.1331,0.4713,0.7797,5,0.9365,0.4556,0.5349,7,0.8411,0.9153,0.8684,6,0.7564,0.8482,0.429,4,0.2378,0.785,0.2119,6,0.8884,0.3904,0.3514,6,0.407,0.5902,0.3302,6,0.7001,0.0322,0.609,5,0.2657,0.4768,0.5842,5,0.292,0.7656,0.8681,6,0.3872,0.0257,0.7262,5,0.8799,0.6366,0.4113,6,0.228,0.6171,0.4821,6,0.5902,0.9112,0.9198,4,0.0882,0.1873,0.0424,5];
+const META = {"N": 512, "R": 0.066494, "L": 1.0, "phi": 0.63052, "rattlers": 8, "nonr": 504, "meanz": 5.992, "contacts": 1510, "zmin": 4, "zmax": 10};
+const $ = s => document.querySelector(s);
+
+/* ---------- metric bar ---------- */
+$("#metricbar").innerHTML = [
+  ["particles N", META.N, ""],
+  ["packing &phi;", META.phi, ""],
+  ["radius R", META.R, ""],
+  ["contacts", META.contacts, ""],
+  ["mean z", META.meanz, "&nbsp;&asymp; 2d"],
+  ["rattlers", META.rattlers, "&nbsp;/ "+META.N],
+  ["isostatic", "yes", "GOOD"],
+].map(([k,v,extra])=>{
+  const good = extra==="GOOD";
+  return `<div class="metric"><div class="k">${k}</div>
+    <div class="v${good?' good':''}">${good?'&#10003; '+v:v}${!good&&extra?`<small>${extra}</small>`:''}</div></div>`;
+}).join("");
+
+$("#foot").innerHTML =
+  `<b>method</b> CALiPPSO (iterative LP), HiGHS interior-point solver &nbsp;&middot;&nbsp; `+
+  `<b>system</b> ${META.N} monodisperse spheres, periodic cube L=${META.L} &nbsp;&middot;&nbsp; `+
+  `<b>result</b> isostatic packing, ${META.contacts} contacts among ${META.nonr} non-rattlers, `+
+  `mean z=${META.meanz}, ${META.rattlers} rattlers (${(100*META.rattlers/META.N).toFixed(2)}%).`;
+
+/* ---------- viridis colour scale ---------- */
+const STOPS = [[68,1,84],[59,82,139],[33,145,140],[94,201,98],[253,231,37]];
+function viridis(t){
+  t=Math.max(0,Math.min(1,t)); const x=t*(STOPS.length-1); const i=Math.floor(x); const f=x-i;
+  const a=STOPS[i], b=STOPS[Math.min(i+1,STOPS.length-1)];
+  return [a[0]+(b[0]-a[0])*f, a[1]+(b[1]-a[1])*f, a[2]+(b[2]-a[2])*f];
+}
+// paint legend bar
+(()=>{ const stops=[]; for(let i=0;i<=6;i++){const c=viridis(i/6);stops.push(`rgb(${c.map(Math.round).join(",")}) ${i/6*100}%`);}
+  $("#legbar").style.background=`linear-gradient(90deg,${stops.join(",")})`;
+  $("#legmin").textContent="z="+META.zmin; $("#legmax").textContent="z="+META.zmax; })();
+
+/* ---------- geometry ---------- */
+const N=META.N, L=META.L, R=META.R;
+// centre positions about origin
+const P=new Float32Array(N*3), COORD=new Int8Array(N);
+let cx=0,cy=0,cz=0;
+for(let i=0;i<N;i++){ P[i*3]=DATA[i*4]-L/2; P[i*3+1]=DATA[i*4+1]-L/2; P[i*3+2]=DATA[i*4+2]-L/2; COORD[i]=DATA[i*4+3]; }
+const zmin=META.zmin, zspan=Math.max(1,META.zmax-META.zmin);
+
+// unit-cube edges (as index pairs of the 8 corners)
+const H=L/2, CORN=[], EDG=[];
+for(let s=0;s<8;s++) CORN.push([ (s&1?H:-H),(s&2?H:-H),(s&4?H:-H) ]);
+for(let a=0;a<8;a++) for(let b=a+1;b<8;b++){ let d=0; for(let k=0;k<3;k++) if(CORN[a][k]!==CORN[b][k]) d++; if(d===1) EDG.push([a,b]); }
+
+/* ---------- view state ---------- */
+let yaw=0.6, pitch=-0.45, zoom=1, spin=true, showBox=true, fadeRat=true, colorMode="coord";
+const cv=$("#cv"), ctx=cv.getContext("2d"); let W=0,Hh=0,DPR=1;
+function syncSize(){ const r=cv.getBoundingClientRect(); DPR=Math.min(2,window.devicePixelRatio||1);
+  const w=Math.round(r.width), h=Math.round(r.height); if(w<=0||h<=0) return;
+  W=w; Hh=h; const bw=w*DPR, bh=h*DPR;
+  if(cv.width!==bw||cv.height!==bh){ cv.width=bw; cv.height=bh; }
+  ctx.setTransform(DPR,0,0,DPR,0,0); }
+syncSize();
+
+const FOCAL=3.0;               // camera distance (in box units)
+const LIGHT=[-0.5,0.7,0.6];    // light direction (screen space)
+(()=>{const n=Math.hypot(...LIGHT);LIGHT[0]/=n;LIGHT[1]/=n;LIGHT[2]/=n;})();
+
+function rot(x,y,z){
+  const cyaw=Math.cos(yaw),syaw=Math.sin(yaw);
+  let X=cyaw*x+syaw*z, Z=-syaw*x+cyaw*z;
+  const cp=Math.cos(pitch),sp=Math.sin(pitch);
+  let Y=cp*y-sp*Z; Z=sp*y+cp*Z;
+  return [X,Y,Z];
+}
+
+const prim=[];
+function frame(){
+  syncSize();
+  ctx.clearRect(0,0,W,Hh);
+  const base=Math.min(W,Hh)*0.46*zoom;
+  const ox=W/2, oy=Hh/2;
+  prim.length=0;
+
+  for(let i=0;i<N;i++){
+    const [X,Y,Z]=rot(P[i*3],P[i*3+1],P[i*3+2]);
+    const persp=FOCAL/(FOCAL-Z);
+    if(persp<=0) continue;
+    const sx=ox+X*base*persp, sy=oy-Y*base*persp, sr=R*base*persp;
+    prim.push({t:0,z:Z,sx,sy,sr,i});
+  }
+  if(showBox){
+    for(const [a,b] of EDG){
+      const ra=rot(...CORN[a]), rb=rot(...CORN[b]);
+      const pa=FOCAL/(FOCAL-ra[2]), pb=FOCAL/(FOCAL-rb[2]);
+      prim.push({t:1,z:(ra[2]+rb[2])/2,
+        x1:ox+ra[0]*base*pa, y1:oy-ra[1]*base*pa,
+        x2:ox+rb[0]*base*pb, y2:oy-rb[1]*base*pb});
+    }
+  }
+  prim.sort((p,q)=>p.z-q.z);
+
+  for(const p of prim){
+    if(p.t===1){
+      ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--box').trim()||"#3b4757";
+      ctx.globalAlpha=0.55; ctx.lineWidth=1.1;
+      ctx.beginPath(); ctx.moveTo(p.x1,p.y1); ctx.lineTo(p.x2,p.y2); ctx.stroke();
+      ctx.globalAlpha=1;
+      continue;
+    }
+    const i=p.i, z=COORD[i], isRat=(z===0);
+    let col;
+    if(colorMode==="mono") col=[150,163,181];
+    else if(colorMode==="depth"){ const t=(p.z+H)/(2*H); col=viridis(t); }
+    else col= isRat ? [140,150,165] : viridis((z-zmin)/zspan);
+
+    let alpha=1;
+    if(isRat && fadeRat) alpha=0.28;
+    drawSphere(p.sx,p.sy,p.sr,col,alpha,isRat);
+  }
+}
+
+function drawSphere(sx,sy,r,col,alpha,isRat){
+  if(r<0.4) return;
+  const [cr,cg,cb]=col;
+  // light offset for highlight
+  const hx=sx - LIGHT[0]*r*0.55, hy=sy - LIGHT[1]*r*0.55;
+  const g=ctx.createRadialGradient(hx,hy,r*0.08, sx,sy,r*1.02);
+  const hi=(v)=>Math.min(255, v+90), lo=(v)=>v*0.32;
+  g.addColorStop(0,`rgba(${hi(cr)},${hi(cg)},${hi(cb)},${alpha})`);
+  g.addColorStop(0.45,`rgba(${cr},${cg},${cb},${alpha})`);
+  g.addColorStop(1,`rgba(${lo(cr)|0},${lo(cg)|0},${lo(cb)|0},${alpha})`);
+  ctx.beginPath(); ctx.arc(sx,sy,r,0,6.2832); ctx.fillStyle=g; ctx.fill();
+  // subtle rim
+  ctx.globalAlpha=alpha*0.5; ctx.lineWidth=Math.max(0.5,r*0.05);
+  ctx.strokeStyle=`rgba(${lo(cr)|0},${lo(cg)|0},${lo(cb)|0},1)`; ctx.stroke();
+  ctx.globalAlpha=1;
+}
+
+/* ---------- animation loop w/ fps ---------- */
+let last=performance.now(), fpsAcc=0, fpsN=0;
+function loop(now){
+  const dt=Math.min(0.05,(now-last)/1000); last=now;
+  if(spin) yaw += dt*0.35;
+  frame();
+  fpsAcc+=1/Math.max(1e-3,dt); fpsN++;
+  if(fpsN>=20){ $("#fps").textContent=Math.round(fpsAcc/fpsN)+" fps"; fpsAcc=0;fpsN=0; }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* ---------- interaction ---------- */
+const stage=$("#stage"); let dragging=false, lx=0, ly=0;
+stage.addEventListener("pointerdown",e=>{dragging=true;lx=e.clientX;ly=e.clientY;stage.classList.add("drag");
+  stage.setPointerCapture(e.pointerId); spin=false; $("#spin").checked=false;});
+stage.addEventListener("pointermove",e=>{ if(!dragging)return;
+  yaw += (e.clientX-lx)*0.008; pitch += (e.clientY-ly)*0.008;
+  pitch=Math.max(-1.5,Math.min(1.5,pitch)); lx=e.clientX; ly=e.clientY; });
+addEventListener("pointerup",()=>{dragging=false;stage.classList.remove("drag");});
+stage.addEventListener("wheel",e=>{e.preventDefault(); zoom*=Math.exp(-e.deltaY*0.0012);
+  zoom=Math.max(0.45,Math.min(3.5,zoom));},{passive:false});
+
+$("#spin").addEventListener("change",e=>spin=e.target.checked);
+$("#box").addEventListener("change",e=>showBox=e.target.checked);
+$("#fade").addEventListener("change",e=>fadeRat=e.target.checked);
+$("#colormode").addEventListener("click",e=>{const b=e.target.closest("button"); if(!b)return;
+  colorMode=b.dataset.v; [...e.currentTarget.children].forEach(x=>x.setAttribute("aria-pressed", x===b));
+  const leg=$("#legend"); leg.style.opacity = colorMode==="coord"?1:0.4;});
+$("#reset").addEventListener("click",()=>{yaw=0.6;pitch=-0.45;zoom=1;spin=true;$("#spin").checked=true;});
+</script>

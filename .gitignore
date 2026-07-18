@@ -13,3 +13,4 @@ scratch.jl
 src/Figures
 *jld2
 Figs-for-README
+*.out
