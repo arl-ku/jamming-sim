@@ -7,6 +7,12 @@
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://rdhr.github.io/CALiPPSO.jl/dev/)
 
 -------
+> ### Attribution
+> This repository is a **fork/derivative of the original [`CALiPPSO.jl`](https://github.com/rdhr/CALiPPSO.jl)** by **Rafael Díaz Hernández Rojas** ([@rdhr](https://github.com/rdhr)) and collaborators. **All credit for the CALiPPSO algorithm and its Julia implementation belongs to the original authors** — Claudia Artiaco, Rafael Díaz Hernández Rojas, Giorgio Parisi, and Federico Ricci-Tersenghi ([*Phys. Rev. E* **106**, 055310 (2022)](https://doi.org/10.1103/PhysRevE.106.055310); [arXiv:2203.05654](https://arxiv.org/abs/2203.05654); see the citation below).
+>
+> This fork only **adds** a HiGHS-based minimal working example and the interactive 3D [visualizations](#visualizations); the core package is unchanged apart from an opt-in `traj_sink` keyword. It is redistributed under the original authors' [MIT license](LICENSE.md), whose copyright notice is preserved unmodified.
+
+-------
 **Important!!** Breaking changes introduced in `v0.2.0` when changing the default optimizer or passing it arguments. See the [corresponding section](#Changing-the-solver) below.
 
 This might cause the following error message if the main function is interrupted.
