@@ -179,6 +179,37 @@ This fork adds a set of **self-contained, interactive 3D visualizations** of the
 | [`packing_viewer.html`](visualizations/packing_viewer.html) | The **final jammed configuration** (d=3, N=512, φ≈0.6305). Spheres are depth-sorted and shaded; colour them by contact number `z`, by depth, or plain. Rattlers (z=0) are faded. |
 | [`packing_animation.html`](visualizations/packing_animation.html) | The **jamming process itself**, iteration by iteration: spheres inflate and rearrange from a loose gas (φ=0.30) to the jammed, isostatic state (φ≈0.63). Play/scrub controls and a live φ readout; minimal-image interpolation keeps periodic wraps from streaking across the cell. |
 
+### Running the visualization
+
+The committed HTML files already contain the data, so the quickest way is simply to **open them in any modern browser** — no build step, no server:
+
+```bash
+# Windows
+start visualizations/packing_viewer.html
+start visualizations/packing_animation.html
+
+# macOS:  open <file>       Linux:  xdg-open <file>
+```
+
+Or just double-click the file in your file manager.
+
+**Controls:** drag to rotate · scroll to zoom · in the animation, `Space` (or the ▶ button) plays/pauses and the slider scrubs through iterations; side panels toggle auto-rotate, the unit cell, and the colour mode.
+
+To **rebuild them from scratch** (e.g. after changing `N`, the seed, or the dimension), regenerate the data and then the HTML. This needs the Julia environment instantiated (`julia --project=. -e 'using Pkg; Pkg.instantiate()'`) and Python 3:
+
+```bash
+# 1. export data from a CALiPPSO run  (see "Producing the data" below)
+julia --project=. export_packing.jl
+julia --project=. export_trajectory.jl
+
+# 2. regenerate the self-contained HTML from that data
+cd visualizations
+python gen_viewer.py     # reads ../packing_d3_N512.csv     -> packing_viewer.html
+python gen_anim.py       # reads ../packing_trajectory.json -> packing_animation.html
+```
+
+Then open the refreshed HTML files as above. The generators only use the Python standard library — no extra packages to install.
+
 ### Producing the data
 
 The viewers embed data exported from a CALiPPSO run (seed `123`, matching the MWE above):
