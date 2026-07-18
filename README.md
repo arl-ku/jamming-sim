@@ -164,6 +164,34 @@ You can find other examples of how CALiPPSO is used in dimensions d=3,4,5, and o
 
 For other features, advanced usage, and more details of how `produce_jammed_configuration!` works please refer to the [documentation](https://rdhr.github.io/CALiPPSO.jl/dev/mainfunction.html).
 
+## Visualizations
+
+This fork adds a set of **self-contained, interactive 3D visualizations** of the packings produced by CALiPPSO, in the [`visualizations/`](visualizations/) folder. Both are single HTML files with the data embedded (no server or dependencies) — just open them in a browser. Drag to rotate, scroll to zoom.
+
+| File | What it shows |
+|------|---------------|
+| [`packing_viewer.html`](visualizations/packing_viewer.html) | The **final jammed configuration** (d=3, N=512, φ≈0.6305). Spheres are depth-sorted and shaded; colour them by contact number `z`, by depth, or plain. Rattlers (z=0) are faded. |
+| [`packing_animation.html`](visualizations/packing_animation.html) | The **jamming process itself**, iteration by iteration: spheres inflate and rearrange from a loose gas (φ=0.30) to the jammed, isostatic state (φ≈0.63). Play/scrub controls and a live φ readout; minimal-image interpolation keeps periodic wraps from streaking across the cell. |
+
+### Producing the data
+
+The viewers embed data exported from a CALiPPSO run (seed `123`, matching the MWE above):
+
+```julia
+julia --project=. export_packing.jl      # final config + coordination -> packing_d3_N512.csv
+julia --project=. export_trajectory.jl   # full per-iteration trajectory -> packing_trajectory.json
+```
+
+To record the trajectory of every iteration, this fork adds an **opt-in `traj_sink` keyword** to the monodisperse `produce_jammed_configuration!`: pass a `Vector` and each iteration pushes a `(R, d×N matrix of coordinates)` frame into it. It defaults to `nothing`, so there is no recording, no overhead, and no behaviour change for existing callers:
+
+```julia
+traj = Vector{Tuple{Float64,Matrix{Float64}}}()
+produce_jammed_configuration!(Xs0, r0; ℓ0=0.2*L, max_iters=500, traj_sink=traj)
+# traj now holds one frame per iteration (initial loose config first)
+```
+
+The HTML files are regenerated from the exported data with the Python scripts in the folder (`gen_viewer.py`, `gen_anim.py`); see [`visualizations/README.md`](visualizations/README.md) for details.
+
 ## ToDo's
 
 1. Add documentation of functions for polydisperse packings (although they are very similar to their monodisperse counterpart).
